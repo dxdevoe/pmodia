@@ -1,10 +1,25 @@
 # AD5933 12-bit network analyzer 
-# Adapted from https://github.com/wheelin/Impedance_raspi_ad5933
+# https://github.com/dxdevoe/pmodia
 #
-# PmodIA module must use 3.3V power or the status register
-# may not behave correctly (see https://forum.digilentinc.com [...]
-# /topic/1248-pmodias-status-register-not-responding/
-
+# Adapted with significant modification from 
+# https://github.com/wheelin/Impedance_raspi_ad5933
+#
+#
+# Notes:
+#
+# * PmodIA module must use 3.3V power or the status register
+#   may not behave correctly.
+#
+# * SEL pin must be tied to ground
+#
+# * PModIA / AD5933 specs allows for 100 Ohm - 10MOhm impedance range,
+#   but the system operates poorly near the ends of this range, and
+#   must be calibrated for a given frequency range. In general, keep
+#   the sweep range small, and calibrate with a known Z over this
+#   range.
+#
+# * Be sure to use a suitable excitation voltage and receive stage
+#   gain to prevent ADC saturation, which can result in strange output.
 
 import smbus
 from math import atan, sqrt
@@ -15,7 +30,8 @@ from datetime import datetime
 # Create log file name
 def f_name():
   i = datetime.now()
-  return "log-%s_%s_%s-%s_%s.csv"%(i.day, i.month, i.year, i.hour, i.minute)
+  return "log-{:0>2}_{:0>2}_{}-{:0>2}_{:0>2}_{:0>2}.csv".format(
+          i.day, i.month, i.year, i.hour, i.minute, i.second)
 
 # Registers
 CONTROL_REG0 = 			0x80
@@ -67,7 +83,7 @@ IMP_MEAS_STATUS =       0b0010
 IMP_SWEEP_STATUS =      0b0100
 
 # Peak-to-peak excitation voltage code map
-# codes (1,2,3,4) = (1V, 2V, 400mV, 800mV):
+# codes 1,2,3,4 = 2V, 1V, 0.4V, 0.2V peak-peak
 EX_VOLTAGE_CODES =      [0b00, 0b11, 0b10, 0b01]
 
 
@@ -150,9 +166,9 @@ class AD5933:
   def set_PGA_gain(self, gain=1):
     word = self.read_reg(CONTROL_REG0)
     if gain == 1:
-      word |= 0b00000001
+      word |= 0b00000001   # 1x gain
     else:
-      word &= 0b11111110
+      word &= 0b11111110   # 5x gain
     self.write_reg(CONTROL_REG0, word)
 
   def set_ex_voltage(self, voltage=2):
@@ -193,26 +209,25 @@ class AD5933:
     word |= RESET                        # add the reset command
     self.write_reg(CONTROL_REG1, word)
 
-  def read_img_reg(self):
-    val = (self.read_reg(IMG_DATA_REG0) << 8) | self.read_reg(IMG_DATA_REG1)
-    if val & (1 << 16):  # neg number, so convert from twos complement
-      val -= pow(2,16)
-    return val
-
   def read_real_reg(self):
     val = (self.read_reg(REAL_DATA_REG0) << 8) | self.read_reg(REAL_DATA_REG1)
-    if val & (1 << 16):  # neg number, so convert from twos complement
+    if val & (1 << 15):  # negative value, so convert from twos complement
       val -= pow(2,16)
     return val
 
-  # Low level methods
+  def read_img_reg(self):
+    val = (self.read_reg(IMG_DATA_REG0) << 8) | self.read_reg(IMG_DATA_REG1)
+    if val & (1 << 15):  # negative value, so convert from twos complement
+      val -= pow(2,16)
+    return val
+
   def read_reg(self, reg):
     return self.bus.read_byte_data(self.address, reg)
 
   def write_reg(self, reg, val):
     self.bus.write_byte_data(self.address, reg, val)
 
-  # utility method to display control and status register contents
+  # utility / debug method to display control and status register contents
   def print_status(self):
     mask = 0b11111111
     print("Status  " + bin(self.read_reg(STATUS_REG) & mask) + '   ' +
