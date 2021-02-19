@@ -14,17 +14,17 @@ print("Initializing impedance analyzer")
 sensor.init()
 
 print("Setting gain")
-sensor.set_PGA_gain(1)  # 1 or 5
+sensor.set_PGA_gain(5)  # 1 or 5
 
 print("Setting excitation voltage")
 sensor.set_ex_voltage(2)  # 1,2,3,4 = 2V, 1V, 0.4V, 0.2V peak-peak
 
 print("Setting settling time")
-sensor.set_settling_time(32, 2)
+sensor.set_settling_time(16)  # cycles
 
 print("Measuring impedance")
 fmin = 10e3        # start frequency [Hz]
-fmax = 50e3        # end frequency
+fmax = 20e3        # end frequency
 df = 100          # delta per step 
 steps = int((fmax-fmin)/df)   #number of steps
 sensor.make_imp_measure(fmin, df, steps)

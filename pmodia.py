@@ -181,6 +181,8 @@ class AD5933:
       self.write_reg(CONTROL_REG0, word)
 
   def set_settling_time(self, cy_num, factor=1):
+    # cy_num = number of cycles for settling
+    # factor multiples cy_num by 1x, 2x, or 4x
     if cy_num > 511 or cy_num < 0 or (factor not in [1,2,4]):
       print("Settling time or scale factor out of allowed range")
     else:
