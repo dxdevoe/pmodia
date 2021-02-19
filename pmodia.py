@@ -89,11 +89,8 @@ class AD5933:
     real = 0
     self.set_freq_range(fo, df, steps)
     self.send_cmd(STANDBY)
-    sleep(0.1)
     self.send_cmd(INIT_WITH_START_FREQ)
-    sleep(0.1)
     self.send_cmd(START_FREQ_SWEEP)
-    sleep(0.2)  # Wait for settling time
     with open(f_name(), 'wt') as csvfile:
       spamwriter = csv.writer(csvfile, delimiter=',')
       spamwriter.writerow(['Freq', 'Real', 'Img'])
